@@ -2,35 +2,30 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "embedded_plugins/**/*.ts",
-    "embedded_plugins/**/*.tsx",
-    "plugins/**/*.ts",
-    "plugins/**/*.tsx"
+    "scripts/**/*.ts"
   ],
   "compilerOptions": {
     "module": "esnext",
     "target": "es2020",
     "sourceMap": true,
+    "strict": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
     "allowSyntheticDefaultImports": true,
-    "jsx": "react", // use typescript to transpile jsx to js
-    "allowJs": true, // allow a partial TypeScript and JavaScript codebase
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "jsx": "react",
     "moduleResolution": "Node",
     "lib": ["es2020", "dom"],
+    "types": ["node", "sax"],
     "skipLibCheck": true,
     "noEmit": true
   },
-  "typedocOptions": {
-    "entryPointStrategy": "expand",
-    "entryPoints": ["src"],
-    "out": "docs",
-    "hideBreadcrumbs": true,
-    "readme": "none",
-    "disableSources": true,
-    "cleanOutputDir": false,
-    "githubPages": false,
-    "excludeExternals": true,
-    "listInvalidSymbolLinks": true
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs",
+      "target": "es2020",
+      "esModuleInterop": true
+    }
   }
 }

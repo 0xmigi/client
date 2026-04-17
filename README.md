@@ -1,59 +1,109 @@
-# Dark Forest Client
+# Life Heatmap
 
-## Development Guide
+A GitHub-contributions-style heatmap dashboard for metrics I track about myself.
 
-### Installing Core Dependencies
+First tracker: **running distance from Apple Health**. Built to accept more trackers (sleep, weight, reading, lifts) as drop-in modules.
 
-- Node (v14.x OR v16.x)
-- Yarn (Javascript Package Manager)
+## How it works
 
-#### Installing The Correct Node Version Using NVM
+```
+iOS (Apple Health)  ──export──▶  JSON/XML file
+                                      │
+                             (daily scheduled task)
+                                      ▼
+                          yarn ingest --json <path>
+                                      │
+                                      ▼
+                         data/running/workouts.jsonl
+                         data/running/daily.json    ◀── read at runtime
+                                      │
+                                      ▼
+                           React dashboard (Netlify)
+```
 
-Dark Forest is built and tested using Node.js v14/v16 and might not run properly on other Node.js versions. We recommend using NVM to switch between multiple Node.js version on your machine.
+The dashboard is a static site. Data lives in `data/` and is committed to the repo. A scheduled task (running on your Mac) ingests new Apple Health exports daily and pushes the updated data files — Netlify auto-deploys.
+
+## Developing
 
 ```sh
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.35.3/install.sh | bash
-nvm install
+yarn install
+yarn start       # dev server on :8081
+yarn build       # production bundle
 ```
 
-After the installation is finished, you can run `node --version` to verify that you are running v14 or v16
+## Ingesting running data
 
-#### Installing Yarn
+### First-time full import (Apple Health export)
 
-Refer to [Yarn's official documentation](https://classic.yarnpkg.com/en/docs/install) for the installation guide.
-
-After you have Yarn installed, run `yarn` to install the dependencies:
-
-### Running the client
-
-To connecting to the mainnet client, simply run `yarn start:prod`. When asked you can use your whitelist key or import your mainnet burner secret and home coordinates.
-
-### Plugin development
-
-You can develop plugins for Dark Forest either inside this game client repository, or externally using something like https://github.com/Bind/my-first-plugin. In either case, you'll want to use the [`df-plugin-dev-server`](https://github.com/projectsophon/df-plugin-dev-server).
-
-You can install it as a global command, using:
+On iPhone: Health app → profile icon → **Export All Health Data** → AirDrop/save the `export.zip`. Unzip; you'll get an `export.xml`.
 
 ```sh
-npm install -g @projectsophon/df-plugin-dev-server
+yarn ingest --xml /path/to/export.xml
 ```
 
-Once it is installed, you can run it inside this project repository, using:
+This streams the XML, extracts every `HKWorkoutActivityTypeRunning` workout, and writes them into `data/running/workouts.jsonl`. It's idempotent — re-running won't duplicate workouts.
+
+### Daily incremental updates (recommended workflow)
+
+Each day, a small JSON file with just recent workouts is ingested:
 
 ```sh
-df-plugin-dev-server
+yarn ingest --json /path/to/daily.json
+# or a directory of files
+yarn ingest --dir ~/iCloud/HealthExports
 ```
 
-You can then add or modify any plugins inside the [`plugins/`](./plugins) directory and they will be automatically bundled and served as plugins you can import inside the game!
+**Incremental JSON schema:**
 
-And then load your plugin in the game client, like so:
-
-```js
-// Replace PluginTemplate.js with the name of your Plugin
-// And `.ts` extensions become `.js`
-export { default } from 'http://127.0.0.1:2222/PluginTemplate.js?dev';
+```json
+{
+  "workouts": [
+    {
+      "startDate": "2026-04-16T07:12:00-07:00",
+      "durationSec": 1850,
+      "distanceKm": 5.31,
+      "activityType": "Running",
+      "source": "Apple Watch"
+    }
+  ]
+}
 ```
 
-### Embedded plugins
+Produce this however you like. Two easy options:
 
-The Dark Forest client ships with some game "plugins" embedded in the game client. The source code for these plugins exists at [`embedded_plugins/`](./embedded_plugins). You are able to edit them inside the game and the changes will persist. If you change the source code directly, you must delete the plugin in-game and reload your browser to import the new code.
+1. **iOS Shortcut**: "Find Health Samples → Type = Running → Get dictionary from health samples → Text → Save to iCloud Drive". Share this shortcut's output folder with your Mac.
+2. **"Health Auto Export" app** (App Store): schedule daily JSON exports of running workouts to iCloud Drive.
+
+### Scheduling
+
+Configure a recurring task (Claude Desktop task, `launchd`, cron — whatever you use) to run, roughly:
+
+```sh
+cd ~/code/client
+yarn ingest --dir ~/iCloud/HealthExports
+git add data/
+git diff --quiet --cached || git commit -m "daily ingest"
+git push
+```
+
+Netlify picks up the push and redeploys the dashboard.
+
+## Adding a new tracker
+
+1. Define your tracker module at `src/trackers/<id>/index.ts` implementing `Tracker<TDetail>` (see `src/trackers/Tracker.ts`).
+2. Register it in `src/trackers/registry.ts`.
+3. Add an ingestion path under `scripts/trackers/<id>.ts` and, if needed, a new format parser under `scripts/formats/`.
+4. Its daily aggregates go in `data/<id>/daily.json`.
+
+No core changes needed — the dashboard iterates over the registry.
+
+## Project layout
+
+```
+data/              committed data (source of truth for the dashboard)
+scripts/           ingestion CLI
+src/               React dashboard
+  components/      Heatmap, TrackerCard, DayPopover, StatsPanel, …
+  trackers/        Tracker interface + running/ implementation
+  utils/           date, colorScale, streaks
+```

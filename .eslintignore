@@ -1,4 +1,3 @@
-public/
-declarations/
 dist/
-plugins/
+node_modules/
+data/
