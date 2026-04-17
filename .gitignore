@@ -16,6 +16,9 @@ yarn-error.log*
 # Environment variables
 .env
 
+# launchd / cron log files
+/logs/
+
 # Large raw Apple Health exports — too big to commit; ingest then discard
 /raw/
 *.zip

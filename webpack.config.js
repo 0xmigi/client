@@ -27,6 +27,10 @@ module.exports = {
         directory: path.join(__dirname, 'data'),
         publicPath: '/data',
       },
+      {
+        directory: path.join(__dirname, 'public'),
+        publicPath: '/',
+      },
     ],
   },
 
@@ -69,7 +73,10 @@ module.exports = {
       template: './index.html',
     }),
     new CopyPlugin({
-      patterns: [{ from: 'data', to: 'data' }],
+      patterns: [
+        { from: 'data', to: 'data' },
+        { from: 'public', to: '.' },
+      ],
     }),
   ],
 };
