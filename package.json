@@ -16,6 +16,7 @@
     "start": "webpack-dev-server --mode development --hot",
     "build": "webpack --mode production",
     "ingest": "ts-node --transpile-only scripts/ingest.ts",
+    "seed-demo": "ts-node --transpile-only scripts/seed-demo.ts",
     "mcp": "ts-node --transpile-only scripts/mcp-server.ts",
     "lint": "eslint .",
     "format": "prettier --write .",
